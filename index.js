@@ -10,9 +10,9 @@ const GEMINI_API_KEY = "AIzaSyB6UroaWGqnr-ewNaLLnYdN7UUnZmIPwKY";
 const WEBHOOK_VERIFY_TOKEN = "BOT_YAN_2026"; 
 // ------------------------------
 
-app.listen(process.env.PORT || 1337, () => console.log('Servidor con IA Gemini listo'));
+app.listen(process.env.PORT || 1337, () => console.log('Servidor con IA Gemini activo'));
 
-// Verificación para Meta (Webhook)
+// Verificación del Webhook
 app.get('/webhook', (req, res) => {
     if (req.query['hub.verify_token'] === WEBHOOK_VERIFY_TOKEN) {
         res.status(200).send(req.query['hub.challenge']);
@@ -21,7 +21,7 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-// Recepción de mensajes y respuesta con IA
+// Procesamiento de mensajes
 app.post('/webhook', async (req, res) => {
     const entry = req.body.entry?.[0];
     const changes = entry?.changes?.[0];
@@ -31,29 +31,18 @@ app.post('/webhook', async (req, res) => {
         const customerNumber = message.from;
         const customerText = message.text.body;
 
-        console.log("Mensaje recibido de " + customerNumber + ": " + customerText);
-
         try {
-            // 1. LLAMAR A LA IA (GEMINI 1.5 FLASH)
+            // 1. Llamada a la IA (Gemini)
             const geminiResponse = await axios.post(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-                { 
-                    contents: [{ 
-                        parts: [{ 
-                            text: `Eres un asistente inteligente y profesional para una empresa en Brasil. 
-                                   Responde de forma amable, breve y humana. 
-                                   El cliente dice: "${customerText}". 
-                                   Responde en el mismo idioma que el cliente.` 
-                        }] 
-                    }] 
-                }
+                `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                { contents: [{ parts: [{ text: `Eres un asistente de ventas profesional y amable. Responde de forma concisa al siguiente mensaje: ${customerText}` }] }] }
             );
 
             const aiReply = geminiResponse.data.candidates[0].content.parts[0].text;
 
-            // 2. ENVIAR LA RESPUESTA DE VUELTA A WHATSAPP
+            // 2. Respuesta a WhatsApp
             await axios.post(
-                `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/messages`,
+                `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
                 {
                     messaging_product: "whatsapp",
                     to: customerNumber,
@@ -63,7 +52,7 @@ app.post('/webhook', async (req, res) => {
                 { headers: { 'Authorization': `Bearer ${GRAPH_API_TOKEN}` } }
             );
 
-            console.log("Respuesta enviada con éxito");
+            console.log("Mensaje respondido con éxito");
         } catch (error) {
             console.error("Error en el proceso:", error.response?.data || error.message);
         }
