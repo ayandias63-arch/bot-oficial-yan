@@ -1,1 +1,16 @@
 
+{
+  "name": "bot-oficial-yan",
+  "version": "1.0.0",
+  "description": "Bot oficial de Yan",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "ayandias63-arch",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.7"
+  }
+}
