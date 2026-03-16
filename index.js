@@ -12,7 +12,6 @@ const WEBHOOK_VERIFY_TOKEN = "BOT_YAN_2026";
 
 app.listen(process.env.PORT || 1337, () => console.log('Servidor con IA Gemini activo'));
 
-// Verificación del Webhook
 app.get('/webhook', (req, res) => {
     if (req.query['hub.verify_token'] === WEBHOOK_VERIFY_TOKEN) {
         res.status(200).send(req.query['hub.challenge']);
@@ -21,7 +20,6 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-// Procesamiento de mensajes
 app.post('/webhook', async (req, res) => {
     const entry = req.body.entry?.[0];
     const changes = entry?.changes?.[0];
@@ -32,15 +30,14 @@ app.post('/webhook', async (req, res) => {
         const customerText = message.text.body;
 
         try {
-            // 1. Llamada a la IA (Gemini)
+            // URL CAMBIADA A GEMINI-PRO (Más estable para tu cuenta)
             const geminiResponse = await axios.post(
-                `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-                { contents: [{ parts: [{ text: `Eres un asistente de ventas profesional y amable. Responde de forma concisa al siguiente mensaje: ${customerText}` }] }] }
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+                { contents: [{ parts: [{ text: `Eres un asistente de ventas profesional. Responde de forma muy breve: ${customerText}` }] }] }
             );
 
             const aiReply = geminiResponse.data.candidates[0].content.parts[0].text;
 
-            // 2. Respuesta a WhatsApp
             await axios.post(
                 `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
                 {
@@ -52,9 +49,9 @@ app.post('/webhook', async (req, res) => {
                 { headers: { 'Authorization': `Bearer ${GRAPH_API_TOKEN}` } }
             );
 
-            console.log("Mensaje respondido con éxito");
+            console.log("¡Mensaje respondido con éxito!");
         } catch (error) {
-            console.error("Error en el proceso:", error.response?.data || error.message);
+            console.error("Error detallado:", error.response?.data || error.message);
         }
     }
     res.sendStatus(200);
