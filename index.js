@@ -3,12 +3,13 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const app = express().use(bodyParser.json());
 
-const GRAPH_API_TOKEN = "EAAM68BojJm4BQ2PN66ZB8aWngP0FcRusa49w2GsimfMRtuZAKACcAvCbzqb3SZA7NWZCTWVUdrs07R2QwoyiwPAUXTPGW2arLY7ImIr8LPepByO3vLoZACK4Ef6mhEymI9otdTiksr1TRvZCcmD72GdsNkpI6NIZAuJIBRZCtuOK2g6jxCClimdARUSwzLnvc1FSwduR1G9MR3ld60YvsB1P9aCBOQyxlEZBwxfGUXk0dlCjmNleeGrRIeb5rvp0zDMOnj8Ci3ZC5NWocAjEJvrUio"; 
+// --- TUS NUEVAS LLAVES ACTUALIZADAS ---
+const GRAPH_API_TOKEN = "EAAM68BojJm4BQx9ybf8dbqUY1JPTec6Dm2OViOu4ylnVcZBNf3YjLHXQYCp7niMIlUPxcZCLtb0J91epVdzhaEZBVnqF5hDxQ2IwTyHNJeoqN0s4zrds8xPcccmS4vZA0GdfMrjpM8yvDqX9JZAZCqpLm4HOj0zZBBVVHxRajz718xldUamlzH2NBI1uzNsmooIDDcJkzSRHOSJHiVEkJ6RgAC7tIIuI9F83SGaoyZAQkQAJuyQZBPVPFQleFvKVhjpn523uphlgmE8VWtZAFOwTpa"; 
 const PHONE_NUMBER_ID = "1077396925452694"; 
-const GEMINI_API_KEY = "AIzaSyB6UroaWGqnr-ewNaLLnYdN7UUnZmIPwKY"; 
+const GEMINI_API_KEY = "AIzaSyAZY6yLc62RoF_D3mgU_Gvw0nKzDh5HgtQ"; 
 const WEBHOOK_VERIFY_TOKEN = "BOT_YAN_2026"; 
 
-app.listen(process.env.PORT || 1337, () => console.log('BOT_LISTO_Y_ESPERANDO'));
+app.listen(process.env.PORT || 1337, () => console.log('BOT_REINICIADO_CON_NUEVAS_LLAVES'));
 
 app.get('/webhook', (req, res) => {
     if (req.query['hub.verify_token'] === WEBHOOK_VERIFY_TOKEN) {
@@ -27,19 +28,18 @@ app.post('/webhook', async (req, res) => {
     if (message && message.text) {
         const from = message.from;
         const text = message.text.body;
-        console.log("Llego mensaje de: " + from);
 
         try {
-            // Llamada a Gemini mejorada
+            // Llamada a Google Gemini 1.5 Flash
             const response = await axios({
                 method: 'POST',
                 url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY,
-                data: { contents: [{ parts: [{ text: text }] }] }
+                data: { contents: [{ parts: [{ text: "Eres un asistente de ventas profesional. Responde de forma amable y breve a esto: " + text }] }] }
             });
 
             const reply = response.data.candidates[0].content.parts[0].text;
 
-            // Enviar a WhatsApp
+            // Enviar respuesta a WhatsApp
             await axios({
                 method: 'POST',
                 url: 'https://graph.facebook.com/v18.0/' + PHONE_NUMBER_ID + '/messages',
@@ -52,9 +52,9 @@ app.post('/webhook', async (req, res) => {
                 headers: { 'Authorization': 'Bearer ' + GRAPH_API_TOKEN }
             });
             
-            console.log("¡BOT RESPONDIO EXITOSAMENTE!");
+            console.log("¡Mensaje enviado con éxito!");
         } catch (err) {
-            console.log("ERROR DETALLADO:", err.response ? err.response.data : err.message);
+            console.log("ERROR:", err.response ? JSON.stringify(err.response.data) : err.message);
         }
     }
     res.sendStatus(200);
