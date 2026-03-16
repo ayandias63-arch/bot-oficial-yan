@@ -8,7 +8,7 @@ const PHONE_NUMBER_ID = "1077396925452694";
 const GEMINI_API_KEY = "AIzaSyB6UroaWGqnr-ewNaLLnYdN7UUnZmIPwKY"; 
 const WEBHOOK_VERIFY_TOKEN = "BOT_YAN_2026"; 
 
-app.listen(process.env.PORT || 1337, () => console.log('Servidor activo'));
+app.listen(process.env.PORT || 1337, () => console.log('Servidor ONLINE'));
 
 app.get('/webhook', (req, res) => {
     if (req.query['hub.verify_token'] === WEBHOOK_VERIFY_TOKEN) {
@@ -28,12 +28,13 @@ app.post('/webhook', async (req, res) => {
         const customerText = message.text.body;
 
         try {
-            const geminiResponse = await axios.post(
+            // USANDO LA URL MÁS COMPATIBLE
+            const response = await axios.post(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-                { contents: [{ parts: [{ text: `Responde breve en portugués o español: ${customerText}` }] }] }
+                { contents: [{ parts: [{ text: customerText }] }] }
             );
 
-            const aiReply = geminiResponse.data.candidates[0].content.parts[0].text;
+            const aiReply = response.data.candidates[0].content.parts[0].text;
 
             await axios.post(
                 `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
@@ -45,8 +46,9 @@ app.post('/webhook', async (req, res) => {
                 },
                 { headers: { 'Authorization': `Bearer ${GRAPH_API_TOKEN}` } }
             );
-        } catch (error) {
-            console.error("Error:", error.message);
+            console.log("Respuesta enviada");
+        } catch (e) {
+            console.log("Error en IA o WhatsApp");
         }
     }
     res.sendStatus(200);
