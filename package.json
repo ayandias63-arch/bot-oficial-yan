@@ -1,7 +1,7 @@
 {
-  "name": "bot-whatsapp-gemini",
+  "name": "bot-whatsapp-openai",
   "version": "1.0.0",
-  "description": "Bot de WhatsApp con IA Gemini",
+  "description": "Bot de WhatsApp con ChatGPT",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
