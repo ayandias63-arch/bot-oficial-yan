@@ -1,61 +1,99 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const axios = require('axios');
-const app = express().use(bodyParser.json());
+import express from "express";
+import fetch from "node-fetch";
+import bodyParser from "body-parser";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// --- TUS NUEVAS LLAVES ACTUALIZADAS ---
-const GRAPH_API_TOKEN = "EAAM68BojJm4BQx9ybf8dbqUY1JPTec6Dm2OViOu4ylnVcZBNf3YjLHXQYCp7niMIlUPxcZCLtb0J91epVdzhaEZBVnqF5hDxQ2IwTyHNJeoqN0s4zrds8xPcccmS4vZA0GdfMrjpM8yvDqX9JZAZCqpLm4HOj0zZBBVVHxRajz718xldUamlzH2NBI1uzNsmooIDDcJkzSRHOSJHiVEkJ6RgAC7tIIuI9F83SGaoyZAQkQAJuyQZBPVPFQleFvKVhjpn523uphlgmE8VWtZAFOwTpa"; 
-const PHONE_NUMBER_ID = "1077396925452694"; 
-const GEMINI_API_KEY = "AIzaSyAZY6yLc62RoF_D3mgU_Gvw0nKzDh5HgtQ"; 
-const WEBHOOK_VERIFY_TOKEN = "BOT_YAN_2026"; 
+const app = express();
+app.use(bodyParser.json());
 
-app.listen(process.env.PORT || 1337, () => console.log('BOT_REINICIADO_CON_NUEVAS_LLAVES'));
+const PORT = process.env.PORT || 3000;
 
-app.get('/webhook', (req, res) => {
-    if (req.query['hub.verify_token'] === WEBHOOK_VERIFY_TOKEN) {
-        res.status(200).send(req.query['hub.challenge']);
-    } else {
-        res.sendStatus(403);
-    }
+/* CONFIG */
+
+const VERIFY_TOKEN = "yanbot123";
+const WHATSAPP_TOKEN = "EAAM68BojJm4BQ9CTEcRsnP7kleqxhm8tA2vssroFTVmfJKWyafBTyo64cnhobIYwsm78809XX6RRGxfZC9AC7L9k44Q5yM21fjJs9hPZAPjXhozBLQeI88Kg1DCO2saGCB6QwVXbJvhM7LZAcCSUsHiXrdZBAnZBZBZBQ6hUhjO6ZCRokudr20sebBDkapBaOaYXStZAhdzQq1Bhey5f1MvvtCRk0XbRtZA46e1oLMRkBKbZCxMSTJrdVUEA284qq7le0qV1dZABu2IXhSltZBOi2oHP8";
+const PHONE_NUMBER_ID = "5180509297";
+const GEMINI_API_KEY = "AIzaSyAPL33oHMcdf_qKPEiBvyM-7p7otsbG080";
+
+/* GEMINI */
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+async function preguntarGemini(texto) {
+
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash"
+  });
+
+  const result = await model.generateContent(texto);
+  const response = await result.response;
+
+  return response.text();
+}
+
+/* VERIFICAR WEBHOOK */
+
+app.get("/webhook", (req, res) => {
+
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
+
 });
 
-app.post('/webhook', async (req, res) => {
+/* RECIBIR MENSAJES */
+
+app.post("/webhook", async (req, res) => {
+
+  try {
+
     const entry = req.body.entry?.[0];
     const changes = entry?.changes?.[0];
-    const value = changes?.value;
-    const message = value?.messages?.[0];
+    const message = changes?.value?.messages?.[0];
 
-    if (message && message.text) {
-        const from = message.from;
-        const text = message.text.body;
+    if (message) {
 
-        try {
-            // Llamada a Google Gemini 1.5 Flash
-            const response = await axios({
-                method: 'POST',
-                url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY,
-                data: { contents: [{ parts: [{ text: "Eres un asistente de ventas profesional. Responde de forma amable y breve a esto: " + text }] }] }
-            });
+      const from = message.from;
+      const text = message.text?.body;
 
-            const reply = response.data.candidates[0].content.parts[0].text;
+      console.log("Mensaje:", text);
 
-            // Enviar respuesta a WhatsApp
-            await axios({
-                method: 'POST',
-                url: 'https://graph.facebook.com/v18.0/' + PHONE_NUMBER_ID + '/messages',
-                data: {
-                    messaging_product: "whatsapp",
-                    to: from,
-                    type: "text",
-                    text: { body: reply }
-                },
-                headers: { 'Authorization': 'Bearer ' + GRAPH_API_TOKEN }
-            });
-            
-            console.log("¡Mensaje enviado con éxito!");
-        } catch (err) {
-            console.log("ERROR:", err.response ? JSON.stringify(err.response.data) : err.message);
-        }
+      const respuestaIA = await preguntarGemini(text);
+
+      await fetch(`https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${WHATSAPP_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: from,
+          text: { body: respuestaIA }
+        })
+      });
+
     }
+
     res.sendStatus(200);
+
+  } catch (error) {
+
+    console.error(error);
+    res.sendStatus(500);
+
+  }
+
+});
+
+/* SERVIDOR */
+
+app.listen(PORT, () => {
+  console.log("Servidor corriendo en puerto", PORT);
 });
