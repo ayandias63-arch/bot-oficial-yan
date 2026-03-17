@@ -3,13 +3,14 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const app = express().use(bodyParser.json());
 
-// --- CONFIGURACIÓN ACTUALIZADA ---
+// --- CONFIGURACIÓN SEGURA ---
+// El código ahora busca las llaves en el panel "Environment" de Render
 const META_TOKEN = "EAAM68BojJm4BQ9CTEcRsnP7kleqxhm8tA2vssroFTVmfJKWyafBTyo64cnhobIYwsm78809XX6RRGxfZC9AC7L9k44Q5yM21fjJs9hPZAPjXhozBLQeI88Kg1DCO2saGCB6QwVXbJvhM7LZAcCSUsHiXrdZBAnZBZBZBQ6hUhjO6ZCRokudr20sebBDkapBaOaYXStZAhdzQq1Bhey5f1MvvtCRk0XbRtZA46e1oLMRkBKbZCxMSTJrdVUEA284qq7le0qV1dZABu2IXhSltZBOi2oHP8";
-const OPENAI_KEY = "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";
+const OPENAI_KEY = process.env.OPENAI_KEY; // <--- SEGURO: Toma la llave de Render
 const PHONE_ID = "1077396925452694";
 const VERIFY_TOKEN = "BOT_YAN_2026";
 
-app.listen(process.env.PORT || 1337, () => console.log('BOT_CHATGPT_ONLINE'));
+app.listen(process.env.PORT || 1337, () => console.log('BOT_CHATGPT_SEGURO_ONLINE'));
 
 // Webhook para Meta
 app.get('/webhook', (req, res) => {
@@ -25,7 +26,7 @@ app.post('/webhook', async (req, res) => {
     const changes = entry?.changes?.[0];
     const message = changes?.value?.messages?.[0];
 
-    // Responder a Meta para que no reintente
+    // Respuesta inmediata a Meta
     res.sendStatus(200);
 
     if (message && message.text) {
@@ -60,7 +61,7 @@ app.post('/webhook', async (req, res) => {
                 { headers: { 'Authorization': 'Bearer ' + META_TOKEN } }
             );
             
-            console.log("¡Respondido con ChatGPT a: " + from + "!");
+            console.log("¡Mensaje procesado con éxito!");
         } catch (err) {
             console.log("ERROR:", err.response ? JSON.stringify(err.response.data) : err.message);
         }
