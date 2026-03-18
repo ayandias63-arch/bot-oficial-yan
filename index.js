@@ -5,7 +5,7 @@ const app = express().use(bodyParser.json());
 
 // --- CONFIGURACIÓN CON IA GRATUITA (GROQ) ---
 // Estos datos son fijos, el código buscará la llave en Render
-const META_TOKEN = "EAAUl2BB9x50BQ9RxotClb0U0gpncXZB3PQf2heZBNVhFnhuv8LMPCIYZBY6lTAMtC7DKkdNOMZCHDvAeLjOALlZCt3eqILNaDETqx20CM5B4GCob4ZC4FZCkGIZBC4cQd3FWMI1afZC8HbUjuqbPNOPiKh7dW7ZAdbpYTDZB5jLs17tDkoNDXPotXt6txSVQgtLwgZDZD";
+const META_TOKEN = "EAAM68BojJm4BQ7n562nmYZAOG7BNhaO5ovIqXNxTee0ZAw3BHsvjiDW36QEdURHDvnUJ818K1NMkY1BwZCyig4MtDl0y4KGZAPcwZAsSZBT6JF1sUKAT3LxXEhbO3MMcbbCe8ZA5JqOCKQVz0Mn8ZBGlt7ZBSFdFu2oFINnH8ljBzoljQrqY6ZAdt2ZByTsmbudzQZDZD";
 const PHONE_ID = "1077396925452694";
 const VERIFY_TOKEN = "BOT_YAN_2026";
 const GROQ_KEY = process.env.OPENAI_KEY; // <--- SEGURO: Toma la llave gsk_... de Render
