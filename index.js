@@ -1,48 +1,40 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
+
 const app = express().use(bodyParser.json());
 
-// --- CONFIGURACIÓN CON IA GRATUITA (GROQ) ---
-// Estos datos son fijos, el código buscará la llave en Render
-const META_TOKEN = "EAAM68BojJm4BQ7n562nmYZAOG7BNhaO5ovIqXNxTee0ZAw3BHsvjiDW36QEdURHDvnUJ818K1NMkY1BwZCyig4MtDl0y4KGZAPcwZAsSZBT6JF1sUKAT3LxXEhbO3MMcbbCe8ZA5JqOCKQVz0Mn8ZBGlt7ZBSFdFu2oFINnH8ljBzoljQrqY6ZAdt2ZByTsmbudzQZDZD";
-const PHONE_ID = "1077396925452694";
-const VERIFY_TOKEN = "BOT_YAN_2026";
-const GROQ_KEY = process.env.OPENAI_KEY; // <--- SEGURO: Toma la llave gsk_... de Render
+// --- CONFIGURACIÓN DESDE RENDER ---
+const GROQ_KEY = process.env.GROQ_API_KEY; 
+const CHATWOOT_TOKEN = process.env.CHATWOOT_TOKEN;
+const ACCOUNT_ID = process.env.CHATWOOT_ACCOUNT_ID;
+const CHATWOOT_ENDPOINT = process.env.CHATWOOT_ENDPOINT; // Ejemplo: https://app.chatwoot.com
 
-app.listen(process.env.PORT || 1337, () => console.log('BOT_GROQ_ACTIVO_Y_GRATIS'));
-
-// Webhook para validación de Meta
-app.get('/webhook', (req, res) => {
-    if (req.query['hub.verify_token'] === VERIFY_TOKEN) {
-        res.status(200).send(req.query['hub.challenge']);
-    } else {
-        res.sendStatus(403);
-    }
+app.listen(process.env.PORT || 1337, () => {
+    console.log('🚀 BOT_CHATWOOT_GROQ_ACTIVO');
+    console.log(`Conectado a Cuenta: ${ACCOUNT_ID}`);
 });
 
+// Webhook para Chatwoot
 app.post('/webhook', async (req, res) => {
-    const entry = req.body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const value = changes?.value;
-    const message = value?.messages?.[0];
+    const { event, conversation, content, message_type, account } = req.body;
 
-    // Respuesta rápida a Meta
-    res.sendStatus(200);
+    // 1. Validar que sea un mensaje entrante de un cliente
+    if (event === "message_created" && message_type === "incoming") {
+        const conversationId = conversation.id;
+        const userMessage = content;
 
-    if (message && message.text) {
-        const from = message.from;
-        const text = message.text.body;
+        console.log(`📩 Mensaje recibido: "${userMessage}" en conv: ${conversationId}`);
 
         try {
-            // 1. LLAMADA A GROQ (Llama 3 - IA Gratis)
+            // 2. LLAMADA A GROQ (IA Gratis)
             const aiRes = await axios.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 {
                     model: "llama-3.3-70b-versatile",
                     messages: [
-                        { role: "system", content: "Eres un asistente de ventas profesional y servicial." },
-                        { role: "user", content: text }
+                        { role: "system", content: "Eres un asistente de ventas profesional y servicial para una inmobiliaria." },
+                        { role: "user", content: userMessage }
                     ]
                 },
                 { headers: { 'Authorization': `Bearer ${GROQ_KEY}` } }
@@ -50,21 +42,36 @@ app.post('/webhook', async (req, res) => {
 
             const aiReply = aiRes.data.choices[0].message.content;
 
-            // 2. ENVÍO DEL MENSAJE A WHATSAPP
+            // 3. ENVIAR RESPUESTA DE VUELTA A CHATWOOT
             await axios.post(
-                `https://graph.facebook.com/v18.0/${PHONE_ID}/messages`,
+                `${CHATWOOT_ENDPOINT}/api/v1/accounts/${ACCOUNT_ID}/conversations/${conversationId}/messages`,
                 {
-                    messaging_product: "whatsapp",
-                    to: from,
-                    type: "text",
-                    text: { body: aiReply }
+                    content: aiReply,
+                    message_type: "outgoing"
                 },
-                { headers: { 'Authorization': `Bearer ${META_TOKEN}` } }
+                { 
+                    headers: { 
+                        'api_access_token': CHATWOOT_TOKEN,
+                        'Content-Type': 'application/json'
+                    } 
+                }
             );
-            
-            console.log("¡Mensaje enviado con éxito!");
+
+            console.log("✅ Respuesta enviada a Chatwoot con éxito");
         } catch (err) {
-            console.log("ERROR:", err.response ? JSON.stringify(err.response.data) : err.message);
+            console.error("❌ ERROR PROCESANDO:");
+            if (err.response) {
+                console.error(JSON.stringify(err.response.data));
+            } else {
+                console.error(err.message);
+            }
         }
     }
+
+    res.sendStatus(200);
+});
+
+// Mantener el GET por si Meta aún intenta validar algo
+app.get('/webhook', (req, res) => {
+    res.status(200).send(req.query['hub.challenge'] || "Webhook Activo");
 });
