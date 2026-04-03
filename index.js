@@ -26,8 +26,8 @@ app.post('/webhook', async (req, res) => {
         console.log(`📩 Mensagem recebida: "${userMessage}"`);
 
         try {
-            // URL CORREGIDA: v1 y modelo 1.5-flash
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+            // URL DEFINITIVA: Con v1beta y el prefijo models/
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
             
             const geminiRes = await axios.post(url, {
                 contents: [{
@@ -37,6 +37,9 @@ app.post('/webhook', async (req, res) => {
                         Fale de forma clara, amigável e profissional em português. Foco nos benefícios: economizar tempo e aumentar lucro. 
                         Se o cliente tiver interesse, peça o Nome e Ramo da Empresa para agendar uma demonstração rápida.
                         Mensagem do cliente: ${userMessage}`
+                    }]
+                }]
+            });
                     }]
                 }]
             });
