@@ -5,42 +5,44 @@ const axios = require('axios');
 const app = express().use(bodyParser.json());
 
 // --- CONFIGURACIÓN DESDE RENDER ---
-const GROQ_KEY = process.env.GROQ_API_KEY; 
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const CHATWOOT_TOKEN = process.env.CHATWOOT_TOKEN;
 const ACCOUNT_ID = process.env.CHATWOOT_ACCOUNT_ID;
-const CHATWOOT_ENDPOINT = process.env.CHATWOOT_ENDPOINT; // Ejemplo: https://app.chatwoot.com
+const CHATWOOT_ENDPOINT = process.env.CHATWOOT_ENDPOINT;
 
 app.listen(process.env.PORT || 1337, () => {
-    console.log('🚀 BOT_CHATWOOT_GROQ_ACTIVO');
+    console.log('🚀 BOT_CHATWOOT_GEMINI_ACTIVO');
     console.log(`Conectado a Cuenta: ${ACCOUNT_ID}`);
 });
 
 // Webhook para Chatwoot
 app.post('/webhook', async (req, res) => {
-    const { event, conversation, content, message_type, account } = req.body;
+    const { event, conversation, content, message_type } = req.body;
 
-    // 1. Validar que sea un mensaje entrante de un cliente
     if (event === "message_created" && message_type === "incoming") {
         const conversationId = conversation.id;
         const userMessage = content;
 
-        console.log(`📩 Mensaje recibido: "${userMessage}" en conv: ${conversationId}`);
+        console.log(`📩 Mensagem recebida: "${userMessage}" na conv: ${conversationId}`);
 
         try {
-            // 2. LLAMADA A GROQ (IA Gratis)
-            const aiRes = await axios.post(
-                "https://api.groq.com/openai/v1/chat/completions",
+            // 2. LLAMADA A GEMINI (IA de Google)
+            const geminiRes = await axios.post(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
                 {
-                    model: "llama-3.3-70b-versatile",
-                    messages: [
-                        { role: "system", content: "Eres un asistente de ventas profesional y servicial para una inmobiliaria." },
-                        { role: "user", content: userMessage }
-                    ]
-                },
-                { headers: { 'Authorization': `Bearer ${GROQ_KEY}` } }
+                    contents: [{
+                        parts: [{
+                            text: `Você é o assistente inteligente da YAN, uma agência líder em automação de WhatsApp com IA. Sua missão é converter interessados em clientes. 
+                            O que a YAN faz: Atendimento 24/7, IAs inteligentes, Agendamento Automático via Make.com e integração total. 
+                            Fale de forma clara, amigável e profissional em português. Foco nos benefícios: economizar tempo e aumentar lucro. 
+                            Se o cliente tiver interesse, peça o Nome e Ramo da Empresa para agendar uma demonstração rápida.
+                            Mensagem do cliente: ${userMessage}`
+                        }]
+                    }]
+                }
             );
 
-            const aiReply = aiRes.data.choices[0].message.content;
+            const aiReply = geminiRes.data.candidates[0].content.parts[0].text;
 
             // 3. ENVIAR RESPUESTA DE VUELTA A CHATWOOT
             await axios.post(
@@ -49,29 +51,23 @@ app.post('/webhook', async (req, res) => {
                     content: aiReply,
                     message_type: "outgoing"
                 },
-                { 
-                    headers: { 
+                {
+                    headers: {
                         'api_access_token': CHATWOOT_TOKEN,
                         'Content-Type': 'application/json'
-                    } 
+                    }
                 }
             );
 
-            console.log("✅ Respuesta enviada a Chatwoot con éxito");
+            console.log('✅ Resposta enviada ao Chatwoot com sucesso');
         } catch (err) {
-            console.error("❌ ERROR PROCESANDO:");
-            if (err.response) {
-                console.error(JSON.stringify(err.response.data));
-            } else {
-                console.error(err.message);
-            }
+            console.error('❌ ERRO PROCESSANDO:');
+            console.error(err.response ? JSON.stringify(err.response.data) : err.message);
         }
     }
-
     res.sendStatus(200);
 });
 
-// Mantener el GET por si Meta aún intenta validar algo
 app.get('/webhook', (req, res) => {
     res.status(200).send(req.query['hub.challenge'] || "Webhook Activo");
 });
