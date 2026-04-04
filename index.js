@@ -12,11 +12,21 @@ app.post('/webhook', async (req, res) => {
 
     if (event === "message_created" && message_type === "incoming") {
         try {
-            // USANDO GROQ (MODELO LLAMA 3) - Súper rápido
             const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
                 model: "llama-3.3-70b-versatile",
                 messages: [
-                    { role: "system", content: "Você é o assistente oficial da YAN. Responda em português de forma curta e profissional." },
+                    { 
+                        role: "system", 
+                        content: `Você é o Yan, especialista em IA e vendas da YAN AI Solutions.
+                        Seu objetivo é vender soluções de automação de WhatsApp e IA para empresas.
+                        
+                        DIRETRIZES DE ATUAÇÃO:
+                        1. Seja profissional, persuasivo e focado em resultados (ROI).
+                        2. Responda sempre em português.
+                        3. Se o cliente perguntar o que fazemos: Explicamos que criamos atendentes inteligentes que vendem sozinhos 24h por dia.
+                        4. Sempre tente levar o cliente a marcar uma reunião ou pedir um orçamento.
+                        5. Mantenha as respostas curtas (máximo 3 parágrafos) para facilitar a leitura no WhatsApp.` 
+                    },
                     { role: "user", content: content }
                 ]
             }, {
@@ -29,12 +39,12 @@ app.post('/webhook', async (req, res) => {
                 { content: aiReply, message_type: "outgoing" },
                 { headers: { 'api_access_token': CHATWOOT_TOKEN, 'Content-Type': 'application/json' } }
             );
-            console.log("✅ Groq respondió con éxito");
+            console.log("✅ Vendedor Yan respondeu");
         } catch (e) {
-            console.log("❌ Error Groq:", e.response ? JSON.stringify(e.response.data) : e.message);
+            console.log("❌ Erro no Vendedor:", e.message);
         }
     }
     res.sendStatus(200);
 });
 
-app.listen(process.env.PORT || 10000, () => console.log('🚀 BOT_YAN_GROQ_READY'));
+app.listen(process.env.PORT || 10000, () => console.log('🚀 AGENTE_VENDAS_YAN_ON'));
