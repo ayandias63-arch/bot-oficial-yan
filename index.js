@@ -7,21 +7,20 @@ const CHATWOOT_TOKEN = process.env.CHATWOOT_TOKEN;
 const ACCOUNT_ID = process.env.CHATWOOT_ACCOUNT_ID;
 const CHATWOOT_ENDPOINT = process.env.CHATWOOT_ENDPOINT;
 
-// Objeto para evitar mensajes duplicados (caché temporal)
+// Evita respuestas dobles
 const processedMessages = new Set();
 
 app.post('/webhook', async (req, res) => {
     const { event, conversation, content, message_type, id } = req.body;
 
-    // 1. Responder rápido a Chatwoot para que no reenvíe el mensaje
+    // Respuesta inmediata para que Chatwoot no reintente
     res.sendStatus(200);
 
-    // 2. Filtros de seguridad
     if (event !== "message_created" || message_type !== "incoming") return;
-    if (processedMessages.has(id)) return; // Si ya procesamos este ID, lo ignoramos
+    if (processedMessages.has(id)) return;
 
     processedMessages.add(id);
-    setTimeout(() => processedMessages.delete(id), 30000); // Limpiar ID después de 30 seg
+    setTimeout(() => processedMessages.delete(id), 30000);
 
     try {
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
@@ -29,13 +28,28 @@ app.post('/webhook', async (req, res) => {
             messages: [
                 { 
                     role: "system", 
-                    content: `Você é o Yan da YAN AI Solutions. Seu objetivo: Vender automação de WhatsApp para empresas.
-                    REGRA DE OURO: Responda em no máximo 2 frases curtas. Seja direto e profissional. 
-                    Sempre tente agendar uma demonstração ou perguntar o nome da empresa do cliente.` 
+                    content: `Você é um vendedor especialista em automação de WhatsApp com IA da YAN AI Solutions.
+                    
+                    OBJETIVO: Vender serviços que ajudam empresas a responder 24/7, não perder vendas e economizar tempo.
+                    
+                    REGRAS CRÍTICAS:
+                    1. Responda SEMPRE em português do Brasil.
+                    2. Mensagens curtas, naturais e humanas. NUNCA dê respostas longas.
+                    3. Seja direto e persuasivo. Foco em RESULTADOS (vender mais, menos trabalho), não em tecnologia.
+                    4. Sempre termine com uma pergunta para avançar a venda.
+                    
+                    GUIA DE ABORDAGEM:
+                    - Primeiro contato: Pergunte se já perdem clientes por demora.
+                    - Interesse: Explique que a IA vende enquanto eles dormem.
+                    - Preço: Diga que o investimento se paga no primeiro mês e pergunte o volume de mensagens.
+                    - Fechamento: Ofereça ativar hoje ou uma demonstração rápida.
+                    
+                    EXEMPLO DE TOM: "Você vai responder seus clientes automaticamente e vender até dormindo. Hoje você atende manualmente?"` 
                 },
                 { role: "user", content: content }
             ],
-            max_tokens: 100 // Limita físicamente el tamaño de la respuesta
+            max_tokens: 150,
+            temperature: 0.7
         }, {
             headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' }
         });
@@ -48,8 +62,8 @@ app.post('/webhook', async (req, res) => {
         );
 
     } catch (e) {
-        console.log("❌ Erro:", e.message);
+        console.log("❌ Erro no Agente de Vendas:", e.message);
     }
 });
 
-app.listen(process.env.PORT || 10000, () => console.log('🚀 BOT_YAN_SIN_DUPLICADOS'));
+app.listen(process.env.PORT || 10000, () => console.log('🚀 VENDEDOR_YAN_ATIVADO'));
