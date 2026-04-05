@@ -19,47 +19,52 @@ app.post('/webhook', async (req, res) => {
     setTimeout(() => processedMessages.delete(id), 30000);
 
     try {
-        // 1. BUSCAR HISTORIAL PARA MEMORIA
+        // 1. OBTENER TODO EL HISTORIAL (MEMORIA COMPLETA)
         const historyRes = await axios.get(
             `${CHATWOOT_ENDPOINT}/api/v1/accounts/${ACCOUNT_ID}/conversations/${conversation.id}/messages`,
             { headers: { 'api_access_token': CHATWOOT_TOKEN } }
         );
 
         const allMessages = historyRes.data.payload || [];
-        // Detectamos si es el primer mensaje del bot
-        const botMessages = allMessages.filter(m => m.message_type === "outgoing");
-        const isFirstContact = botMessages.length === 0;
+        
+        // Contamos cuántas veces ha respondido el bot anteriormente
+        const botResponses = allMessages.filter(m => m.message_type === "outgoing").length;
+        const isFirstMessage = botResponses === 0;
 
-        // Limitar historial a los últimos 8 para no saturar
-        const contextMessages = allMessages.slice(-8).map(m => ({
+        // Mapeamos el historial completo para la IA (Máximo 10 mensajes para no saturar)
+        const historyForAI = allMessages.slice(-10).map(m => ({
             role: m.message_type === "incoming" ? "user" : "assistant",
             content: m.content || ""
         }));
 
-        // 2. PROMPT DINÁMICO SEGÚN EL ESTADO DE LA CONVERSA
-        const systemInstruction = `Você é o Yan, agente de IA da YAN AI Solutions. 
+        // 2. PROMPT CON LÓGICA DE ESTADO
+        const systemPrompt = `Você é o Yan, agente de IA da YAN AI Solutions. 
         
-        REGRAS DE OURO:
-        ${isFirstContact ? 'ESTA É A PRIMEIRA MENSAGEM: Diga "Opa, tudo bem?" e apresente-se como "Yan, agente de IA".' : 'A CONVERSA JÁ COMEÇOU: Proibido dizer "Opa", "Olá" ou se apresentar de novo. Vá direto ao assunto.'}
-        
+        CONTEXTO DE CONVERSA:
+        ${isFirstMessage 
+            ? 'A conversa está COMEÇANDO agora. Saudação obrigatória: "Opa, tudo bem? Sou o Yan, agente de IA...".' 
+            : 'A conversa JÁ ESTÁ EM ANDAMENTO. PROIBIDO saudações (Opa, Olá, Tudo bem) e PROIBIDO se apresentar novamente. Vá direto ao ponto da dúvida do cliente.'}
+
+        REGRAS:
         - FORMATO: Máximo 2 parágrafos (total de 8 a 9 linhas). Use quebras de linha.
-        - FOCO: Marcar reunião. Se perguntarem preço: Pequenos (R$97-190), Médios (R$297-997), Grandes (R$997+).
-        - Nunca responda com textos gigantes. Termine sempre com uma pergunta curta.`;
+        - PREÇOS: R$97-190 (Pequeno), R$297-997 (Médio), R$997+ (Grande).
+        - MEMÓRIA: Use o histórico para responder de forma coerente.
+        - FINALIZAÇÃO: Termine sempre com uma pergunta curta para avançar a venda.`;
 
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [
-                { role: "system", content: systemInstruction },
-                ...contextMessages,
-                { role: "user", content: content } // Aseguramos que el mensaje actual sea el último
+                { role: "system", content: systemPrompt },
+                ...historyForAI
             ],
-            temperature: 0.6 // Bajamos un poco la temperatura para que sea más estable
+            temperature: 0.5 // Baja para que obedezca la instrucción de no saludar
         }, {
             headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' }
         });
 
         const aiReply = response.data.choices[0].message.content;
 
+        // 3. ENVIAR RESPUESTA A CHATWOOT
         await axios.post(`${CHATWOOT_ENDPOINT}/api/v1/accounts/${ACCOUNT_ID}/conversations/${conversation.id}/messages`,
             { content: aiReply, message_type: "outgoing" },
             { headers: { 'api_access_token': CHATWOOT_TOKEN, 'Content-Type': 'application/json' } }
@@ -70,4 +75,4 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-app.listen(process.env.PORT || 10000, () => console.log('🚀 YAN_V4_FIX_GREETING'));
+app.listen(process.env.PORT || 10000, () => console.log('🚀 YAN_MEMORIA_INTELIGENTE_ON'));
