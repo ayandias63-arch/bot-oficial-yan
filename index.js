@@ -19,37 +19,39 @@ app.post('/webhook', async (req, res) => {
     setTimeout(() => processedMessages.delete(id), 30000);
 
     try {
-        // 1. OBTENER TODO EL HISTORIAL (MEMORIA COMPLETA)
+        // 1. BUSCAR HISTÓRICO COMPLETO PARA TER MEMÓRIA
         const historyRes = await axios.get(
             `${CHATWOOT_ENDPOINT}/api/v1/accounts/${ACCOUNT_ID}/conversations/${conversation.id}/messages`,
             { headers: { 'api_access_token': CHATWOOT_TOKEN } }
         );
 
         const allMessages = historyRes.data.payload || [];
-        
-        // Contamos cuántas veces ha respondido el bot anteriormente
-        const botResponses = allMessages.filter(m => m.message_type === "outgoing").length;
-        const isFirstMessage = botResponses === 0;
+        const botMessages = allMessages.filter(m => m.message_type === "outgoing");
+        const isFirstContact = botMessages.length === 0;
 
-        // Mapeamos el historial completo para la IA (Máximo 10 mensajes para no saturar)
+        // Mapeia os últimos 10 mensagens para o Groq entender o contexto
         const historyForAI = allMessages.slice(-10).map(m => ({
             role: m.message_type === "incoming" ? "user" : "assistant",
             content: m.content || ""
         }));
 
-        // 2. PROMPT CON LÓGICA DE ESTADO
-        const systemPrompt = `Você é o Yan, agente de IA da YAN AI Solutions. 
+        // 2. CONFIGURAÇÃO DO VENDEDOR COM O SEU PROMPT
+        const systemPrompt = `Você é um vendedor especialista em automação de WhatsApp da YAN AI Solutions.
         
-        CONTEXTO DE CONVERSA:
-        ${isFirstMessage 
-            ? 'A conversa está COMEÇANDO agora. Saudação obrigatória: "Opa, tudo bem? Sou o Yan, agente de IA...".' 
-            : 'A conversa JÁ ESTÁ EM ANDAMENTO. PROIBIDO saudações (Opa, Olá, Tudo bem) e PROIBIDO se apresentar novamente. Vá direto ao ponto da dúvida do cliente.'}
+        OBJETIVO: Vender serviços que ajudam empresas a responder 24/7 e não perder vendas.
+        
+        REGRAS DE OURO:
+        - Responda SEMPRE em português do Brasil.
+        - Mensagens curtas (máximo 2 parágrafos, 8-9 linhas no total).
+        - NÃO fale de tecnologia, fale de RESULTADOS (vender mais, menos trabalho).
+        - ${isFirstContact ? 'PRIMEIRA MENSAGEM: Use "Olá! Você já perde clientes por não responder rápido no WhatsApp?"' : 'JÁ CONVERSANDO: PROIBIDO saudações como "Olá", "Opa" ou "Tudo bem". Vá direto ao ponto usando o histórico.'}
+        - Sempre termine com uma pergunta para avançar a venda.
 
-        REGRAS:
-        - FORMATO: Máximo 2 parágrafos (total de 8 a 9 linhas). Use quebras de linha.
-        - PREÇOS: R$97-190 (Pequeno), R$297-997 (Médio), R$997+ (Grande).
-        - MEMÓRIA: Use o histórico para responder de forma coerente.
-        - FINALIZAÇÃO: Termine sempre com uma pergunta curta para avançar a venda.`;
+        GUIA DE ARGUMENTOS:
+        - Se mostrar interesse: "Perfeito 👌 a IA responde na hora. Hoje você atende manualmente?"
+        - Se pedir preço: "Depende da necessidade, mas o investimento se paga no primeiro mês. Quantas mensagens você recebe por dia?"
+        - Fechamento: "Posso ativar hoje. Quer começar agora ou ver uma demonstração rápida?"
+        - Se duvidar: "Entendo 👍 mas quantos clientes você já perdeu por demora?"`;
 
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
@@ -57,22 +59,23 @@ app.post('/webhook', async (req, res) => {
                 { role: "system", content: systemPrompt },
                 ...historyForAI
             ],
-            temperature: 0.5 // Baja para que obedezca la instrucción de no saludar
+            temperature: 0.5, // Mantém o bot focado e obediente
+            max_tokens: 350
         }, {
             headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' }
         });
 
         const aiReply = response.data.choices[0].message.content;
 
-        // 3. ENVIAR RESPUESTA A CHATWOOT
+        // 3. ENVIAR RESPOSTA PARA O CHATWOOT
         await axios.post(`${CHATWOOT_ENDPOINT}/api/v1/accounts/${ACCOUNT_ID}/conversations/${conversation.id}/messages`,
             { content: aiReply, message_type: "outgoing" },
             { headers: { 'api_access_token': CHATWOOT_TOKEN, 'Content-Type': 'application/json' } }
         );
 
     } catch (e) {
-        console.log("❌ Erro:", e.message);
+        console.log("❌ Erro no Vendedor Yan:", e.message);
     }
 });
 
-app.listen(process.env.PORT || 10000, () => console.log('🚀 YAN_MEMORIA_INTELIGENTE_ON'));
+app.listen(process.env.PORT || 10000, () => console.log('🚀 VENDEDOR_YAN_V8_MEMORIA_FULL'));
