@@ -1,0 +1,13 @@
+# Dependencias (son miles de archivos que Render descargará solo)
+node_modules/
+
+# Archivos de configuración local y secretos (¡NUNCA los subas!)
+.env
+.env.local
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs de errores
+npm-debug.log*
