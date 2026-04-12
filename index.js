@@ -1,81 +1,63 @@
 const express = require('express');
-const axios = require('axios');
-const app = express().use(express.json());
+const helmet = require('helmet');
+const cors = require('cors');
+const morgan = require('morgan');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
 
-const GROQ_KEY = process.env.GROQ_API_KEY;
-const CHATWOOT_TOKEN = process.env.CHATWOOT_TOKEN;
-const ACCOUNT_ID = process.env.CHATWOOT_ACCOUNT_ID;
-const CHATWOOT_ENDPOINT = process.env.CHATWOOT_ENDPOINT;
+const app = express();
 
-const processedMessages = new Set();
+// --- CONFIGURACIÓN DE SEGURIDAD ---
+app.use(helmet()); // Protege contra ataques web comunes
+app.use(cors());   // Permite que otras webs se conecten (puedes limitarlo después)
+app.use(morgan('dev')); // Registro de actividad en consola
+app.use(express.json()); // Para entender datos JSON
 
-app.post('/webhook', async (req, res) => {
-    const { event, conversation, content, message_type, id } = req.body;
-    res.sendStatus(200);
+// Inicialización de Gemini
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
-    if (event !== "message_created" || message_type !== "incoming") return;
-    if (processedMessages.has(id)) return;
-    processedMessages.add(id);
-    setTimeout(() => processedMessages.delete(id), 30000);
+// --- RUTAS ---
 
-    try {
-        // 1. BUSCAR HISTÓRICO COMPLETO PARA TER MEMÓRIA
-        const historyRes = await axios.get(
-            `${CHATWOOT_ENDPOINT}/api/v1/accounts/${ACCOUNT_ID}/conversations/${conversation.id}/messages`,
-            { headers: { 'api_access_token': CHATWOOT_TOKEN } }
-        );
-
-        const allMessages = historyRes.data.payload || [];
-        const botMessages = allMessages.filter(m => m.message_type === "outgoing");
-        const isFirstContact = botMessages.length === 0;
-
-        // Mapeia os últimos 10 mensagens para o Groq entender o contexto
-        const historyForAI = allMessages.slice(-10).map(m => ({
-            role: m.message_type === "incoming" ? "user" : "assistant",
-            content: m.content || ""
-        }));
-
-        // 2. CONFIGURAÇÃO DO VENDEDOR COM O SEU PROMPT
-        const systemPrompt = `Você é um vendedor especialista em automação de WhatsApp da YAN AI Solutions.
-        
-        OBJETIVO: Vender serviços que ajudam empresas a responder 24/7 e não perder vendas.
-        
-        REGRAS DE OURO:
-        - Responda SEMPRE em português do Brasil.
-        - Mensagens curtas (máximo 2 parágrafos, 8-9 linhas no total).
-        - NÃO fale de tecnologia, fale de RESULTADOS (vender mais, menos trabalho).
-        - ${isFirstContact ? 'PRIMEIRA MENSAGEM: Use "Olá! Você já perde clientes por não responder rápido no WhatsApp?"' : 'JÁ CONVERSANDO: PROIBIDO saudações como "Olá", "Opa" ou "Tudo bem". Vá direto ao ponto usando o histórico.'}
-        - Sempre termine com uma pergunta para avançar a venda.
-
-        GUIA DE ARGUMENTOS:
-        - Se mostrar interesse: "Perfeito 👌 a IA responde na hora. Hoje você atende manualmente?"
-        - Se pedir preço: "Depende da necessidade, mas o investimento se paga no primeiro mês. Quantas mensagens você recebe por dia?"
-        - Fechamento: "Posso ativar hoje. Quer começar agora ou ver uma demonstração rápida?"
-        - Se duvidar: "Entendo 👍 mas quantos clientes você já perdeu por demora?"`;
-
-        const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-            model: "llama-3.3-70b-versatile",
-            messages: [
-                { role: "system", content: systemPrompt },
-                ...historyForAI
-            ],
-            temperature: 0.5, // Mantém o bot focado e obediente
-            max_tokens: 350
-        }, {
-            headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' }
-        });
-
-        const aiReply = response.data.choices[0].message.content;
-
-        // 3. ENVIAR RESPOSTA PARA O CHATWOOT
-        await axios.post(`${CHATWOOT_ENDPOINT}/api/v1/accounts/${ACCOUNT_ID}/conversations/${conversation.id}/messages`,
-            { content: aiReply, message_type: "outgoing" },
-            { headers: { 'api_access_token': CHATWOOT_TOKEN, 'Content-Type': 'application/json' } }
-        );
-
-    } catch (e) {
-        console.log("❌ Erro no Vendedor Yan:", e.message);
-    }
+// 1. Health Check (Vital para Render y empresas)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Servidor operativo' });
 });
 
-app.listen(process.env.PORT || 10000, () => console.log('🚀 VENDEDOR_YAN_V8_MEMORIA_FULL'));
+// 2. Chat Endpoint Profesional
+app.post('/api/v1/chat', async (req, res) => {
+  try {
+    const { prompt, history } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'El campo "prompt" es obligatorio' });
+    }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    
+    // Generación de contenido
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    res.status(200).json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      data: {
+        respuesta: text
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en Gemini:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor al procesar la IA'
+    });
+  }
+});
+
+// --- LANZAMIENTO ---
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 API Profesional ejecutándose en puerto ${PORT}`);
+});
