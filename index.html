@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Solutions | Yan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans">
+
+    <nav class="p-6 flex justify-between items-center border-b border-slate-800">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+            YAN AI BUSINESS
+        </h1>
+        <span class="text-sm bg-green-500/10 text-green-400 px-3 py-1 rounded-full border border-green-500/20">
+            ● Sistema Activo
+        </span>
+    </nav>
+
+    <main class="max-w-4xl mx-auto mt-20 text-center px-4">
+        <h2 class="text-5xl font-extrabold mb-6">Automatiza tu empresa con <br><span class="text-indigo-500">Inteligencia Artificial</span></h2>
+        <p class="text-xl text-slate-400 mb-10">Conecta Gemini 2.0 a tu negocio y responde a tus clientes en milisegundos.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+            <div class="p-6 bg-slate-800 rounded-2xl">
+                <h3 class="font-bold text-lg mb-2">WhatsApp 24/7</h3>
+                <p class="text-sm text-slate-400">Atención automática sin humanos.</p>
+            </div>
+            <div class="p-6 bg-slate-800 rounded-2xl">
+                <h3 class="font-bold text-lg mb-2">Omnicanal</h3>
+                <p class="text-sm text-slate-400">Web, Instagram y WhatsApp en un solo lugar.</p>
+            </div>
+            <div class="p-6 bg-slate-800 rounded-2xl">
+                <h3 class="font-bold text-lg mb-2">Gemini 2.0</h3>
+                <p class="text-sm text-slate-400">La tecnología más avanzada de Google.</p>
+            </div>
+        </div>
+
+        <p class="mt-12 text-indigo-400 animate-bounce">¡Pruébame en el chat de la derecha! →</p>
+    </main>
+
+    <script>
+      (function(d,t) {
+        var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+        g.src="TU_URL_DE_CHATWOOT"; // Este lo sacas de Chatwoot
+        g.defer=true;
+        g.async=true;
+        s.parentNode.insertBefore(g,s);
+        g.onload=function(){
+          window.chatwootSDK.run({
+            websiteToken: 'TU_TOKEN_AQUÍ',
+            baseUrl: 'https://app.chatwoot.com'
+          })
+        }
+      })(document,"script");
+    </script>
+
+</body>
+</html>
