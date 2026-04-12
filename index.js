@@ -1,37 +1,27 @@
-// Endpoint especial para Chatwoot
-app.post('/api/v1/chatwoot', async (req, res) => {
-  try {
-    const { content, conversation, account, event } = req.body;
+const express = require('express');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const app = express();
+app.use(express.json());
 
-    // Solo respondemos si es un mensaje de un cliente (no del bot)
-    if (event === "message_created" && req.body.message_type === "incoming") {
-      
-      const conversationId = conversation.id;
-      const accountId = account.id;
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
-      // Llamamos a Gemini
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent(content);
-      const aiResponse = result.response.text();
+// RUTA PARA TIDIO
+app.post('/tidio', async (req, res) => {
+    try {
+        // Tidio envía el mensaje del usuario en req.body.message
+        const userMessage = req.body.message;
+        
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const result = await model.generateContent(userMessage);
+        const aiResponse = result.response.text();
 
-      // ENVIAR RESPUESTA DE VUELTA A CHATWOOT
-      // Necesitarás tu TOKEN de Chatwoot en las variables de entorno de Render
-      await fetch(`${process.env.CHATWOOT_URL}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api_access_token': process.env.CHATWOOT_TOKEN
-        },
-        body: JSON.stringify({
-          content: aiResponse,
-          message_type: "outgoing"
-        })
-      });
+        // Tidio espera una respuesta en formato JSON con la propiedad 'reply'
+        res.status(200).json({
+            reply: aiResponse
+        });
+    } catch (error) {
+        res.status(500).json({ reply: "Lo siento, tuve un problema técnico." });
     }
-
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Error en Chatwoot Link:', error);
-    res.status(500).json({ error: 'Error interno' });
-  }
 });
+
+app.listen(10000, () => console.log("IA lista para Tidio en puerto 10000"));
