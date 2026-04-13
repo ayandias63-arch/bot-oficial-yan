@@ -1,27 +1,37 @@
 const express = require('express');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const axios = require('axios'); // Necesario para responder de vuelta a Chatwoot
+
 const app = express();
 app.use(express.json());
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
-// RUTA PARA TIDIO
-app.post('/tidio', async (req, res) => {
+// RUTA PARA CHATWOOT (WhatsApp)
+app.post('/chatwoot/webhook', async (req, res) => {
     try {
-        // Tidio envía el mensaje del usuario en req.body.message
-        const userMessage = req.body.message;
-        
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        const result = await model.generateContent(userMessage);
-        const aiResponse = result.response.text();
+        const { content, message_type, conversation } = req.body;
 
-        // Tidio espera una respuesta en formato JSON con la propiedad 'reply'
-        res.status(200).json({
-            reply: aiResponse
-        });
+        // Solo respondemos si es un mensaje entrante de un cliente
+        if (message_type === 'incoming') {
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            
+            // Enviamos el mensaje del cliente a Gemini
+            const result = await model.generateContent(content);
+            const aiResponse = result.response.text();
+
+            // Enviamos la respuesta de Gemini de vuelta a Chatwoot
+            await axios.post(
+                `${process.env.CHAT_ENDPOINT}/api/v1/accounts/1/conversations/${conversation.id}/messages`,
+                { content: aiResponse, message_type: "outgoing" },
+                { headers: { 'api_access_token': process.env.CHAT_TOKEN } }
+            );
+        }
+        res.status(200).send('ok');
     } catch (error) {
-        res.status(500).json({ reply: "Lo siento, tuve un problema técnico." });
+        console.error("Error:", error);
+        res.status(500).send('error');
     }
 });
 
-app.listen(10000, () => console.log("IA lista para Tidio en puerto 10000"));
+app.listen(10000, () => console.log("IA conectada a WhatsApp mediante Chatwoot"));
