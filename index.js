@@ -6,36 +6,33 @@ app.use(express.json());
 
 // --- CONFIGURACIÓN PROFESIONAL ---
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const SYSTEM_PROMPT = "Eres el Asistente Ejecutivo Senior de YAN AI BUSINESS. Tu tono es corporativo, directo y altamente profesional. Resuelves dudas de automatización y negocios con IA.";
+const SYSTEM_PROMPT = "Eres el Asistente Ejecutivo Senior de YAN AI BUSINESS. Tu tono es corporativo, directo y altamente profesional.";
 
 app.post('/chatwoot/webhook', async (req, res) => {
     try {
-        const { content, message_type, conversation, account, attachments } = req.body;
+        const { content, message_type, conversation, account } = req.body;
 
         if (message_type === 'incoming') {
             const customerName = conversation.contact_name || "Cliente";
-            console.log(`📩 Mensaje de ${customerName}: ${content || "[Archivo/Imagen]"}`);
+            console.log(`📩 Mensaje de ${customerName}: ${content}`);
 
-            let messageContent = [{ type: "text", text: content || "Hola" }];
-
-            // 2. Llamada a OpenRouter usando LLAMA 3.1 (Más estable)
+            // 1. Llamada a OpenRouter usando DEEPSEEK
             const aiResponse = await axios.post(OPENROUTER_URL, {
-                model: "meta-llama/llama-3.1-8b-instruct:free", // Versión estable y rápida
+                model: "deepseek/deepseek-chat", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
-                    { role: "user", content: messageContent }
+                    { role: "user", content: content || "Hola" }
                 ]
             }, {
                 headers: {
                     "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                    "HTTP-Referer": "https://yan-ai-business.com",
                     "X-Title": "Yan AI System"
                 }
             });
 
             const responseText = aiResponse.data.choices[0].message.content;
 
-            // 3. Respuesta a Chatwoot
+            // 2. Respuesta a Chatwoot
             const baseUrl = process.env.CHATWOOT_ENDPOINT;
             await axios.post(
                 `${baseUrl}/api/v1/accounts/${account.id}/conversations/${conversation.id}/messages`,
@@ -43,7 +40,7 @@ app.post('/chatwoot/webhook', async (req, res) => {
                 { headers: { 'api_access_token': process.env.CHAT_TOKEN } }
             );
 
-            console.log("🚀 Respuesta enviada con Llama 3.1");
+            console.log("🚀 Respuesta enviada con DeepSeek");
         }
         res.status(200).send('OK');
     } catch (error) {
@@ -53,4 +50,4 @@ app.post('/chatwoot/webhook', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`💼 YAN AI BUSINESS - Sistema listo con Llama en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`💼 YAN AI BUSINESS - DeepSeek listo en puerto ${PORT}`));
