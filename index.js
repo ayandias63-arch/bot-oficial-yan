@@ -16,9 +16,9 @@ app.post('/chatwoot/webhook', async (req, res) => {
             const customerName = conversation.contact_name || "Cliente";
             console.log(`📩 Mensaje de ${customerName}: ${content}`);
 
-            // 1. Llamada a OpenRouter usando DEEPSEEK
+            // 1. Llamada a OpenRouter usando GEMINI 2.0 FLASH LITE (GRATIS)
             const aiResponse = await axios.post(OPENROUTER_URL, {
-                model: "deepseek/deepseek-chat", 
+                model: "google/gemini-2.0-flash-lite-preview-02-05:free", 
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: content || "Hola" }
@@ -40,14 +40,15 @@ app.post('/chatwoot/webhook', async (req, res) => {
                 { headers: { 'api_access_token': process.env.CHAT_TOKEN } }
             );
 
-            console.log("🚀 Respuesta enviada con DeepSeek");
+            console.log("🚀 Respuesta enviada con Gemini Gratis");
         }
         res.status(200).send('OK');
     } catch (error) {
+        // Log detallado para ver por qué falla si es el caso
         console.error("❌ Error en el flujo:", error.response?.data || error.message);
         res.status(500).send('Error');
     }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`💼 YAN AI BUSINESS - DeepSeek listo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`💼 YAN AI BUSINESS - Probando Gemini Gratis en puerto ${PORT}`));
