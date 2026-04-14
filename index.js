@@ -16,20 +16,11 @@ app.post('/chatwoot/webhook', async (req, res) => {
             const customerName = conversation.contact_name || "Cliente";
             console.log(`📩 Mensaje de ${customerName}: ${content || "[Archivo/Imagen]"}`);
 
-            // 1. Preparar contenido multimodal (Texto e Imagen)
-            let messageContent = [{ type: "text", text: content || "Analiza esta imagen" }];
+            let messageContent = [{ type: "text", text: content || "Hola" }];
 
-            if (attachments && attachments.length > 0) {
-                const imageUrl = attachments[0].data_url;
-                messageContent.push({
-                    type: "image_url",
-                    image_url: { url: imageUrl }
-                });
-            }
-
-            // 2. Llamada a OpenRouter con el ID de modelo corregido
+            // 2. Llamada a OpenRouter usando LLAMA 3.1 (Más estable)
             const aiResponse = await axios.post(OPENROUTER_URL, {
-                model: "google/gemini-2.0-flash-exp", 
+                model: "meta-llama/llama-3.1-8b-instruct:free", // Versión estable y rápida
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: messageContent }
@@ -52,15 +43,14 @@ app.post('/chatwoot/webhook', async (req, res) => {
                 { headers: { 'api_access_token': process.env.CHAT_TOKEN } }
             );
 
-            console.log("🚀 Respuesta enviada con éxito");
+            console.log("🚀 Respuesta enviada con Llama 3.1");
         }
         res.status(200).send('OK');
     } catch (error) {
-        // Log detallado para ver si falta saldo o hay otro error
         console.error("❌ Error en el flujo:", error.response?.data || error.message);
         res.status(500).send('Error');
     }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`💼 YAN AI BUSINESS - Sistema listo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`💼 YAN AI BUSINESS - Sistema listo con Llama en puerto ${PORT}`));
