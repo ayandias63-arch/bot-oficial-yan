@@ -14,11 +14,21 @@ app.post('/chatwoot/webhook', async (req, res) => {
         if (message_type === 'incoming' && content) {
             console.log(`📩 Mensaje recibido: ${content}`);
 
+            // Configuración del Prompt en Portugués para Meta
+            const systemInstructions = `Você é o assistente virtual oficial da Yan AI Solutions. Sua missão é fornecer suporte profissional sobre automação com Inteligência Artificial.
+
+            Instruções de resposta para o teste da Meta:
+            1. Sobre os Serviços: Oferecemos automação de processos de atendimento, chatbots personalizados para WhatsApp e integração de APIs de IA.
+            2. Sobre Integração: Para integrar um bot, o cliente deve solicitar uma consultoria técnica neste chat. Nós configuramos tudo no Render e OpenAI.
+            3. Sobre Atendimento Humano: Nosso horário de atendimento é de segunda a sexta-feira, das 09:00 às 18:00. Se necessário, um consultor entrará em contato.
+
+            Diretrizes: Responda sempre em Português, com tom executivo e profissional. Máximo 3 frases por resposta.`;
+
             // 2. Llamada a OpenAI
             const aiResponse = await axios.post("https://api.openai.com/v1/chat/completions", {
                 model: process.env.AI_MODEL || "gpt-4o-mini", 
                 messages: [
-                    { role: "system", content: "Eres asistente de Yan AI Solutions. Responde de forma muy breve, máximo 2 frases." },
+                    { role: "system", content: systemInstructions },
                     { role: "user", content: content }
                 ]
             }, {
@@ -44,7 +54,6 @@ app.post('/chatwoot/webhook', async (req, res) => {
             console.log(`🚀 Respondido: ${responseText}`);
         }
     } catch (error) {
-        // Log detallado por si algo falla (puedes verlo en los Logs de Render)
         console.error("❌ Error en el proceso:", error.response?.data || error.message);
     }
 });
