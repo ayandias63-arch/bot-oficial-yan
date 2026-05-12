@@ -62,7 +62,7 @@ Se o cliente estiver bravo ou reclamando da internet:
 
 Exemplo:
 "Bah tchê 😕 entendo tua situação.
-Vamos resolver isso juntos."
+Vamos resolver  juntos."
 
 Oriente:
 - reiniciar roteador
