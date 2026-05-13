@@ -104,7 +104,7 @@ REGRAS:
 - não usar textos enormes
 - sempre terminar ajudando o cliente
 - parecer uma atendente real da empresa
-`;.
+`;
 
             const aiResponse = await axios.post("https://api.openai.com/v1/chat/completions", {
                 model: process.env.AI_MODEL || "gpt-4o-mini", 
