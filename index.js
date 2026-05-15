@@ -1,141 +1,272 @@
-const express = require('express');
-const axios = require('axios');
+require("dotenv").config();
+
+const express = require("express");
+const cors = require("cors");
+const fs = require("fs");
+const qrcode = require("qrcode-terminal");
+
+const { Client, LocalAuth } = require("whatsapp-web.js");
+
+const OpenAI = require("openai");
+
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 
-// --- FUNCIÓN PARA ACTIVAR EL PERMISO DE META ---
-async function testMetaCall() {
-    try {
-        console.log("🔄 Intentando llamada de prueba a Meta...");
-        const response = await axios.get(`https://graph.facebook.com/v19.0/me?access_token=${process.env.META_ACCESS_TOKEN}`);
-        console.log("✅ Llamada a Meta exitosa. ID de la App:", response.data.id);
-    } catch (error) {
-        console.error("❌ Error en la llamada de prueba a Meta:", error.response?.data || error.message);
-    }
-}
+/* ======================================================
+   OPENAI
+====================================================== */
 
-app.post('/chatwoot/webhook', async (req, res) => {
-    res.status(200).send('OK');
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-    try {
-        const { content, message_type, conversation, account } = req.body;
+/* ======================================================
+   PROMPT SISTEMA
+====================================================== */
 
-        if (message_type === 'incoming' && content) {
-            console.log(`📩 Mensaje recibido: ${content}`);
-const systemPrompt = `
-Você é Nettie, assistente virtual da FibernetRS.
+const PROMPT_SISTEMA = `
+Você é a Clara, assistente virtual inteligente de uma clínica médica brasileira.
 
-Seu objetivo é impressionar clientes com um atendimento humano,
-rápido, simpático e profissional pelo WhatsApp.
+Seu atendimento deve ser:
+- profissional
+- simpático
+- rápido
+- humanizado
 
-Você fala como uma atendente gaúcha real.
-Use expressões naturais como:
-"bah", "tchê", "guri", "guria", "barbaridade".
+Você ajuda pacientes com:
+- agendamento de consultas
+- informações médicas básicas
+- horários
+- especialidades
+- convênios
+- atendimento humano
 
-Nunca exagere nas gírias.
+Especialidades:
+- Clínico Geral
+- Dermatologista
+- Cardiologista
+- Pediatra
+- Psicólogo
+- Ortopedista
+- Ginecologista
 
-Você ajuda clientes com:
-- contratação de internet
-- suporte técnico
-- financeiro
-- informações gerais
+Regras:
+- Responda curto e natural.
+- Não envie textos enormes.
+- Faça uma pergunta por vez.
+- Use poucos emojis.
+- Nunca diga que é IA.
+- Sempre tente ajudar o paciente.
 
-PLANOS DISPONÍVEIS:
-
-150 Mega — R$ 79,90
-350 Mega — R$ 89,90
-500 Mega — R$ 99,90
-600 Mega — R$ 109,90 + Watch TV
-650 Mega — R$ 129,90 + câmera WiFi
-750 Mega — R$ 139,90 + WiFi Plus
-1 Giga — R$ 159,90
-
-Taxa de adesão: R$ 100 via Pix.
-
-COMPORTAMENTO:
-
-1. CLIENTE IRRITADO
-Se o cliente estiver bravo ou reclamando da internet:
-- seja empática
-- demonstre preocupação
-- tente resolver primeiro
-
-Exemplo:
-"Bah tchê 😕 entendo tua situação.
-Vamos resolver  juntos."
-
-Oriente:
-- reiniciar roteador
-- verificar cabos
-- testar em outro aparelho
-
-Se não resolver:
-- peça nome e endereço
-- informe abertura de chamado técnico
-
-2. CLIENTE QUERENDO CONTRATAR
-Se o cliente quiser contratar internet:
-- pergunte o endereço
-- recomende o melhor plano baseado no uso
-
-Exemplo:
-- casa pequena → 350 Mega
-- muitas TVs/celulares → 600 Mega ou superior
-- gamer/home office → 750 Mega ou 1 Giga
-
-Fale de maneira natural e vendedora.
-
-3. FALAR COM HUMANO
-Se o cliente pedir atendente:
-"Bah tchê 👍 vou encaminhar teu atendimento agora."
-
-4. MEMÓRIA
-Se o cliente disser o nome:
-- memorize
-- use o nome nas próximas respostas
-
-5. ÁUDIOS
-Se o cliente mandar áudio:
-- responda normalmente como conversa humana
-
-REGRAS:
-- nunca diga que é IA
-- respostas curtas e naturais
-- não usar textos enormes
-- sempre terminar ajudando o cliente
-- parecer uma atendente real da empresa
+Se o paciente pedir humano:
+"Claro 😊 Vou encaminhar você para nossa equipe."
 `;
 
-            const aiResponse = await axios.post("https://api.openai.com/v1/chat/completions", {
-                model: process.env.AI_MODEL || "gpt-4o-mini", 
-                messages: [
-                    { role: "system", content: systemInstructions },
-                    { role: "user", content: content }
-                ]
-            }, {
-                headers: { 
-                    "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-                    "Content-Type": "application/json"
-                }
-            });
+/* ======================================================
+   WHATSAPP
+====================================================== */
 
-            const responseText = aiResponse.data.choices[0].message.content;
+const client = new Client({
+  authStrategy: new LocalAuth(),
 
-            await axios.post(`${process.env.CHATWOOT_ENDPOINT}/api/v1/accounts/${account.id}/conversations/${conversation.id}/messages`,
-                { content: responseText, message_type: "outgoing" },
-                { headers: { 'api_access_token': process.env.CHAT_TOKEN } }
-            );
+  puppeteer: {
+    headless: true,
 
-            console.log(`🚀 Respondido: ${responseText}`);
-        }
-    } catch (error) {
-        console.error("❌ Error en el proceso:", error.response?.data || error.message);
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+    ],
+  },
+});
+
+/* ======================================================
+   QR CODE
+====================================================== */
+
+client.on("qr", (qr) => {
+  console.log("\n📲 ESCANEIE O QR CODE:\n");
+
+  qrcode.generate(qr, {
+    small: true,
+  });
+});
+
+/* ======================================================
+   CONECTADO
+====================================================== */
+
+client.on("ready", () => {
+  console.log("✅ Bot conectado!");
+});
+
+/* ======================================================
+   MEMÓRIA
+====================================================== */
+
+const conversas = {};
+
+/* ======================================================
+   MENSAGENS
+====================================================== */
+
+client.on("message", async (message) => {
+  try {
+    // Ignorar grupos
+    if (message.from.includes("@g.us")) return;
+
+    // Criar memória
+    if (!conversas[message.from]) {
+      conversas[message.from] = [];
     }
+
+    let textoUsuario = message.body;
+
+    /* ======================================================
+       PROCESSAR ÁUDIO
+    ====================================================== */
+
+    if (message.hasMedia) {
+      const media = await message.downloadMedia();
+
+      if (
+        media &&
+        media.mimetype &&
+        media.mimetype.includes("audio")
+      ) {
+        console.log("🎤 Áudio recebido");
+
+        // salvar áudio
+        fs.writeFileSync(
+          "audio.ogg",
+          Buffer.from(media.data, "base64")
+        );
+
+        // transcrição
+        const transcricao =
+          await openai.audio.transcriptions.create({
+            file: fs.createReadStream("audio.ogg"),
+            model: "whisper-1",
+          });
+
+        textoUsuario = transcricao.text;
+
+        console.log("📝 Transcrição:");
+        console.log(textoUsuario);
+      }
+    }
+
+    // Ignorar vazio
+    if (!textoUsuario) return;
+
+    console.log("\n📩 Mensagem:");
+    console.log(textoUsuario);
+
+    /* ======================================================
+       HISTÓRICO
+    ====================================================== */
+
+    conversas[message.from].push({
+      role: "user",
+      content: textoUsuario,
+    });
+
+    // limitar memória
+    conversas[message.from] =
+      conversas[message.from].slice(-15);
+
+    /* ======================================================
+       OPENAI
+    ====================================================== */
+
+    const respostaIA =
+      await openai.chat.completions.create({
+        model: "gpt-4.1-mini",
+
+        temperature: 0.7,
+
+        messages: [
+          {
+            role: "system",
+            content: PROMPT_SISTEMA,
+          },
+
+          ...conversas[message.from],
+        ],
+      });
+
+    const resposta =
+      respostaIA.choices[0].message.content;
+
+    console.log("\n🤖 Resposta:");
+    console.log(resposta);
+
+    /* ======================================================
+       SALVAR RESPOSTA
+    ====================================================== */
+
+    conversas[message.from].push({
+      role: "assistant",
+      content: resposta,
+    });
+
+    /* ======================================================
+       DIGITANDO
+    ====================================================== */
+
+    const chat = await message.getChat();
+
+    await chat.sendStateTyping();
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, 1500)
+    );
+
+    /* ======================================================
+       ENVIAR
+    ====================================================== */
+
+    await client.sendMessage(
+      message.from,
+      resposta
+    );
+  } catch (erro) {
+    console.log("❌ ERRO:");
+    console.log(erro);
+
+    await client.sendMessage(
+      message.from,
+      "Desculpe, ocorreu um erro no atendimento."
+    );
+  }
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-    console.log(`✅ Servidor Yan AI activo en puerto ${PORT}`);
-    // Ejecutamos la llamada a Meta justo al iniciar el servidor
-    testMetaCall();
+/* ======================================================
+   API
+====================================================== */
+
+app.get("/", (req, res) => {
+  res.json({
+    status: "online",
+    bot: "Clínica IA",
+  });
 });
+
+/* ======================================================
+   SERVIDOR
+====================================================== */
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(
+    `🚀 Servidor rodando na porta ${PORT}`
+  );
+});
+
+/* ======================================================
+   INICIAR BOT
+====================================================== */
+
+client.initialize();
